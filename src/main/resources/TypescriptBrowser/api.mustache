@@ -1,0 +1,396 @@
+// tslint:disable
+{{>licenseInfo}}
+
+export const BASE_PATH = "{{{basePath}}}".replace(/\/+$/, "");
+
+{{#models}}
+{{#model}}{{#isEnum}}{{>modelEnum}}{{/isEnum}}{{^isEnum}}{{>modelGeneric}}{{/isEnum}}{{/model}}
+{{/models}}
+
+{{#apiInfo}}
+{{#apis}}
+{{#operations}}
+{{#operation}}
+{{#allParams.0}}
+export interface {{operationIdCamelCase}}Request {
+    {{#allParams}}
+    {{paramName}}{{^required}}?{{/required}}: {{{dataType}}};
+    {{/allParams}}
+}
+
+{{/allParams.0}}
+{{/operation}}
+{{/operations}}
+{{/apis}}
+{{/apiInfo}}
+
+/**
+ * This is the base class for all generated API classes.
+ */
+export class BaseAPI {
+
+    private middleware: Middleware[];
+
+    constructor(protected configuration = new Configuration()) {
+        this.middleware = configuration.middleware;
+    }
+
+    withMiddleware(...middlewares: Middleware[]) {
+        middlewares.forEach((middleware) => this.middleware.push(middleware));
+        return this;
+    }
+
+    withPreMiddleware(...preMiddlewares: Array<Middleware['pre']>) {
+        const middlewares = preMiddlewares.map((pre) => ({ pre }));
+        return this.withMiddleware(...middlewares);
+    }
+
+    withPostMiddleware(...postMiddlewares: Array<Middleware['post']>) {
+        const middlewares = postMiddlewares.map((post) => ({ post }));
+        return this.withMiddleware(...middlewares);
+    }
+
+    protected async request<T>(context: RequestOpts): Promise<T> {
+        const { url, init } = this.createFetchParams(context);
+        const response = await this.fetchApi(url, init);
+        if (response.status >= 200 && response.status < 300) {
+            if (context.responseType === 'JSON') {
+                const result = await response.json() as T;
+                return transformPropertyNames(result, context.modelPropertyNaming);
+            }
+            return response as any as T;
+        }
+        throw response;
+    }
+
+    private createFetchParams(context: RequestOpts) {
+        let url = this.configuration.basePath + context.path;
+        if (context.query !== undefined) {
+             url += '?' + querystring(context.query);
+        }
+        const body = context.body instanceof FormData ? context.body : JSON.stringify(context.body);
+        const init = {
+            method: context.method,
+            headers: context.headers,
+            body,
+        };
+        return { url, init };
+    }
+
+    private fetchApi = async (url: string, init: RequestInit) => {
+        let fetchParams = { url, init };
+        for (const middleware of this.middleware) {
+            if (middleware.pre) {
+                fetchParams = await middleware.pre(this.fetchApi, fetchParams.url, fetchParams.init) || fetchParams;
+            }
+        }
+        let response = await this.configuration.fetchApi(fetchParams.url, fetchParams.init);
+        for (const middleware of this.middleware) {
+            if (middleware.post) {
+                response = await middleware.post(this.fetchApi, url, init, response.clone()) || response;
+            }
+        }
+        return response;
+    }
+};
+
+export class RequiredError extends Error {
+    name: "RequiredError"
+    constructor(public field: string, msg?: string) {
+        super(msg);
+    }
+}
+
+{{#apiInfo}}{{#apis}}{{#operations}}
+/**
+ * {{#description}}{{{description}}}{{/description}}{{^description}}no description{{/description}}
+ */
+export class {{classname}} extends BaseAPI {
+
+    {{#operation}}
+    /**
+     {{#notes}}
+     * {{&notes}}
+     {{/notes}}
+     {{#summary}}
+     * {{&summary}}
+     {{/summary}}
+     */
+    async {{nickname}}({{#allParams.0}}requestParameters: {{operationIdCamelCase}}Request{{/allParams.0}}): Promise<{{#returnType}}{{{returnType}}}{{/returnType}}{{^returnType}}Response{{/returnType}}> {
+        {{#allParams}}
+        {{#required}}
+        if (requestParameters.{{paramName}} === null || requestParameters.{{paramName}} === undefined) {
+            throw new RequiredError('{{paramName}}','Required parameter requestParameters.{{paramName}} was null or undefined when calling {{nickname}}.');
+        }
+
+        {{/required}}
+        {{/allParams}}
+        {{#hasQueryParams}}
+        const queryParameters: HTTPQuery = {};
+
+        {{/hasQueryParams}}
+        {{#queryParams}}
+        {{#isListContainer}}
+        if (requestParameters.{{paramName}}) {
+            {{#isCollectionFormatMulti}}
+            queryParameters['{{baseName}}'] = requestParameters.{{paramName}};
+            {{/isCollectionFormatMulti}}
+            {{^isCollectionFormatMulti}}
+            queryParameters['{{baseName}}'] = requestParameters.{{paramName}}.join(COLLECTION_FORMATS["{{collectionFormat}}"]);
+            {{/isCollectionFormatMulti}}
+        }
+
+        {{/isListContainer}}
+        {{^isListContainer}}
+        if (requestParameters.{{paramName}} !== undefined) {
+            {{#isDateTime}}
+            queryParameters['{{baseName}}'] = (requestParameters.{{paramName}} as any).toISOString();
+            {{/isDateTime}}
+            {{^isDateTime}}
+            {{#isDate}}
+            queryParameters['{{baseName}}'] = (requestParameters.{{paramName}} as any).toISOString();
+            {{/isDate}}
+            {{^isDate}}
+            queryParameters['{{baseName}}'] = requestParameters.{{paramName}};
+            {{/isDate}}
+            {{/isDateTime}}
+        }
+
+        {{/isListContainer}}
+        {{/queryParams}}
+        const headerParameters: HTTPHeaders = {};
+
+        {{#hasFormParams}}
+        headerParameters['Content-Type'] = 'application/x-www-form-urlencoded';
+
+        {{/hasFormParams}}
+        {{#bodyParam}}
+        {{^consumes}}
+        headerParameters['Content-Type'] = 'application/json';
+
+        {{/consumes}}
+        {{#consumes.0}}
+        headerParameters['Content-Type'] = '{{{mediaType}}}';
+
+        {{/consumes.0}}
+        {{/bodyParam}}
+        {{#hasFormParams}}
+        {{#headerParams}}
+        {{#isListContainer}}
+        if (requestParameters.{{paramName}}) {
+            headerParameters['{{baseName}}'] = requestParameters.{{paramName}}.join(COLLECTION_FORMATS["{{collectionFormat}}"]));
+        }
+
+        {{/isListContainer}}
+        {{^isListContainer}}
+        if (requestParameters.{{paramName}} !== undefined && requestParameters.{{paramName}} !== null) {
+            headerParameters['{{baseName}}'] = String(requestParameters.{{paramName}});
+        }
+
+        {{/isListContainer}}
+        {{/headerParams}}
+        {{#authMethods}}
+        {{#isBasic}}
+        if (this.configuration && (this.configuration.username !== undefined || this.configuration.password !== undefined)) {
+            headerParameters["Authorization"] = "Basic " + btoa(this.configuration.username + ":" + this.configuration.password);
+        }
+
+        {{/isBasic}}
+        {{#isApiKey}}
+        {{#isKeyInHeader}}
+        if (this.configuration && this.configuration.apiKey) {
+            headerParameters["{{keyParamName}}"] = this.configuration.apiKey("{{keyParamName}}"); // {{name}} authentication
+        }
+
+        {{/isKeyInHeader}}
+        {{#isKeyInQuery}}
+        if (this.configuration && this.configuration.apiKey) {
+            queryParameters["{{keyParamName}}"] = this.configuration.apiKey("{{keyParamName}}"); // {{name}} authentication
+        }
+
+        {{/isKeyInQuery}}
+        {{/isApiKey}}
+        {{#isOAuth}}
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            if (typeof this.configuration.accessToken === 'function') {
+                headerParameters["Authorization"] = this.configuration.accessToken("{{name}}", [{{#scopes}}"{{{scope}}}"{{^-last}}, {{/-last}}{{/scopes}}]);
+            } else {
+                headerParameters["Authorization"] = this.configuration.accessToken;
+            }
+        }
+
+        {{/isOAuth}}
+        {{/authMethods}}
+        const formData = new FormData();
+        {{/hasFormParams}}
+        {{#formParams}}
+        {{#isListContainer}}
+        if (requestParameters.{{paramName}}) {
+            {{#isCollectionFormatMulti}}
+            requestParameters.{{paramName}}.forEach((element) => {
+                formData.append('{{baseName}}', element as any);
+            })
+            {{/isCollectionFormatMulti}}
+            {{^isCollectionFormatMulti}}
+            formData.set('{{baseName}}', requestParameters.{{paramName}}.join(COLLECTION_FORMATS["{{collectionFormat}}"]));
+            {{/isCollectionFormatMulti}}
+        }
+
+        {{/isListContainer}}
+        {{^isListContainer}}
+        if (requestParameters.{{paramName}} !== undefined) {
+            formData.set('{{baseName}}', requestParameters.{{paramName}} as any);
+        }
+
+        {{/isListContainer}}
+        {{/formParams}}
+        return this.request<{{#returnType}}{{{returnType}}}{{/returnType}}{{^returnType}}Response{{/returnType}}>({
+            path: `{{{path}}}`{{#pathParams}}.replace(`{${"{{baseName}}"}}`, encodeURIComponent(String(requestParameters.{{paramName}}))){{/pathParams}},
+            method: '{{httpMethod}}',
+            headers: headerParameters,
+            {{#hasQueryParams}}
+            query: queryParameters,
+            {{/hasQueryParams}}
+            {{#hasBodyParam}}
+            {{#bodyParam}}
+            body: requestParameters.{{paramName}},
+            {{/bodyParam}}
+            {{/hasBodyParam}}
+            {{#hasFormParams}}
+            body: formData,
+            {{/hasFormParams}}
+            {{#returnType}}
+            responseType: 'JSON',
+            {{/returnType}}
+            modelPropertyNaming: '{{modelPropertyNaming}}',
+        });
+    }
+
+    {{/operation}}
+}
+{{/operations}}{{/apis}}{{/apiInfo}}
+
+
+export const COLLECTION_FORMATS = {
+    csv: ",",
+    ssv: " ",
+    tsv: "\t",
+    pipes: "|",
+};
+
+export type FetchAPI = GlobalFetch['fetch'];
+
+export interface ConfigurationParameters {
+    basePath?: string; // override base path
+    fetchApi?: FetchAPI; // override for fetch implementation
+    middleware?: Middleware[]; // middleware to apply before/after fetch requests
+    username?: string; // parameter for basic security
+    password?: string; // parameter for basic security
+    apiKey?: string | ((name: string) => string); // parameter for apiKey security
+    accessToken?: string | ((name: string, scopes?: string[]) => string); // parameter for oauth2 security
+}
+
+export class Configuration {
+
+    basePath: string;
+    fetchApi: FetchAPI;
+    middleware: Middleware[];
+    username?: string;
+    password?: string;
+    apiKey?: (name: string) => string;
+    accessToken?: (name: string, scopes?: string[]) => string;
+
+    constructor(conf: ConfigurationParameters = {}) {
+        this.basePath = conf.basePath !== undefined ? conf.basePath : BASE_PATH;
+        this.fetchApi = conf.fetchApi || window.fetch.bind(window);
+        this.middleware = conf.middleware || [];
+        this.username = conf.username;
+        this.password = conf.password;
+        if (conf.apiKey) {
+            this.apiKey = typeof conf.apiKey === 'function' ? conf.apiKey : () => conf.apiKey;
+        }
+        if (conf.accessToken) {
+            this.accessToken = typeof conf.accessToken === 'function' ? conf.accessToken : () => conf.accessToken;
+        }
+    }
+}
+
+export type Json = any;
+export type HTTPMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'OPTIONS';
+export type HTTPHeaders = { [key: string]: string };
+export type HTTPQuery = { [key: string]: string | number | null | boolean | Array<string | number | null | boolean> };
+export type HTTPBody = Json | FormData;
+export type ModelPropertyNaming = 'camelCase' | 'snake_case' | 'PascalCase' | 'original';
+
+export interface FetchParams {
+    url: string;
+    init: RequestInit;
+}
+
+interface RequestOpts {
+    path: string;
+    method: HTTPMethod;
+    headers: HTTPHeaders;
+    query?: HTTPQuery;
+    body?: HTTPBody;
+    responseType?: 'JSON';
+    modelPropertyNaming: ModelPropertyNaming;
+}
+
+function querystring(params: HTTPQuery) {
+    return Object.keys(params)
+        .map((key) => {
+            const value = params[key];
+            if (value instanceof Array) {
+                const multiValue = value.join(`&${encodeURIComponent(key)}=`);
+                return `${encodeURIComponent(key)}=${multiValue}`;
+            }
+            return `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`
+        })
+        .join('&');
+}
+
+export interface Middleware {
+    pre?(fetch: FetchAPI, url: string, init: RequestInit): Promise<FetchParams | undefined | void>;
+    post?(fetch: FetchAPI, url: string, init: RequestInit, response: Response): Promise<Response | undefined | void>;
+}
+
+function toCamelCase(name: string) {
+    return (name.charAt(0).toLowerCase() + name.slice(1) || name).toString();
+}
+
+function applyPropertyNameConverter(json: any, converter: (name: string) => string) {
+    if (json instanceof Array) {
+        json.forEach((value) => {
+            if (typeof value === 'object') {
+                return applyPropertyNameConverter(value, converter);
+            }
+        });
+    } else {
+        Object.keys(json).forEach((origKey) => {
+            if (json.hasOwnProperty(origKey)) {
+                let value = json[origKey];
+                if (value instanceof Array || (value !== null && value.constructor === Object)) {
+                    value = applyPropertyNameConverter(value, converter);
+                }
+                const newKey = converter(origKey);
+                json[newKey] = json[origKey];
+                delete json[origKey];
+                json[newKey] = value;
+            }
+        });
+    }
+    return json;
+}
+
+function transformPropertyNames(json: any, modelPropertyNaming: ModelPropertyNaming) {
+    switch (modelPropertyNaming) {
+        case 'camelCase':
+            return applyPropertyNameConverter(json, toCamelCase);
+
+        case 'original':
+        default:
+            return json;
+    }
+}
