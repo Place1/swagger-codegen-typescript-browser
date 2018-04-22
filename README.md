@@ -40,6 +40,39 @@ is correctly pointing to it.
 If you don't want to set up the project locally then you can just view the swagger petstore example in the `example/` directory :D
 
 
+## What does it look like?
+Here's how you use the generated library. These examples use [swagger's petstore example spec](http://petstore.swagger.io):
+
+```
+import { PetApi, Pet, Configuration, Middleware, FetchAPI } from '../example/api.ts'
+
+class LoggingMiddleware implements Middleware {
+  async pre(fetch: FetchAPI, url: string, init: RequestInit) {
+    console.log(`request started --> ${url}`);
+  }
+
+  async post(fetch: FetchAPI, url: string, init: RequestInit, response: Response) {
+    console.log(`request finished --> ${url}`);
+  }
+}
+
+async function example() {
+  const config = new Configuration({
+    basePath: 'http://api.mypetstore.com/', // an override for the base path to the API
+    middleware: [
+      new LoggingMiddleware(),
+    ]
+  });
+
+  const api = new PetApi(config);s
+  const pet: Pet = await api.getPetById({ petId: 10 });
+  await api.uploadFile({ petId: 10, file: new File() }); // this is a multipart/form-data request
+  await api.deletePet({ petId: 10 }); // this is a no-content response
+}
+
+example();
+```
+
 ## But why?
 This code generator is a fork of the Typescript-Fetch generator that
 ships with swagger codegen.
