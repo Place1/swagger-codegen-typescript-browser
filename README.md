@@ -43,7 +43,24 @@ If you don't want to set up the project locally then you can just view the swagg
 ## What does it look like?
 Here's how you use the generated library. These examples use [swagger's petstore example spec](http://petstore.swagger.io):
 
+Basic usage:
+
+```typescript
+import { PetApi, Pet } from '../example/api.ts'
+
+async function example() {
+  const api = new PetApi(config);s
+  const pet: Pet = await api.getPetById({ petId: 10 });
+  await api.uploadFile({ petId: 10, file: new File() }); // this is a multipart/form-data request
+  await api.deletePet({ petId: 10 }); // this is a no-content response
+}
+
+example();
 ```
+
+The same example using middleware:
+
+```typescript
 import { PetApi, Pet, Configuration, Middleware, FetchAPI } from '../example/api.ts'
 
 class LoggingMiddleware implements Middleware {
