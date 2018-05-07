@@ -2,42 +2,36 @@
 
 ## How do I use this code generator?
 
-First, you'll need to clone this repository and build it using Java 1.7
+First, you'll need the jar file. You can either clone this repository and build it using Java 1.7
+or you can download it from the github releases page.
 
+**build**
 ```
 git clone https://github.com/Place1/swagger-codegen-typescript-browser.git
 cd swagger-codegen-typescript-browser
-mvn package
+mvn clean package
 ```
 
-You'll also need to download the latest swagger codegen jar file. Currently i've only tested
-this code generator with swagger codegen 2.3.1.
-
+**or download**
 ```
-wget http://central.maven.org/maven2/io/swagger/swagger-codegen-cli/2.3.1/swagger-codegen-cli-2.3.1.jar -O "swagger-codegen-cli.jar"
+curl --output TypescriptBrowser-swagger-codegen-0.0.1-shaded.jar https://github.com/Place1/swagger-codegen-typescript-browser/releases/download/v0.0.1/TypescriptBrowser-swagger-codegen-0.0.1-shaded.jar
 ```
 
-Once the code generator has been built and you've downloaded the swagger-codegen-cli.jar
-you should be ready to use this code generator.
-
-You can use it by invoking the swagger codegen jar with this code generator jar
-added to the java classpath.
-
-Here's how you do it:
+Then you can run the built jar file. Here's how:
 
 ```
-java -cp /path/to/swagger-codegen-cli.jar:./target/TypescriptBrowser-swagger-codegen-1.0.0.jar \
-  io.swagger.codegen.Codegen \
+java -jar ./target/TypescriptBrowser-swagger-codegen-0.0.1-shaded.jar generate \
   -l TypescriptBrowser \
   -i http://petstore.swagger.io/v2/swagger.json \
-  -o ./test
+  -o example
 ```
 
 ## Example
-You can run `./petstore-example.sh` for a complete example. You'll need to have installed java 1.7 and made sure you JAVA_HOME
-is correctly pointing to it.
+You can run `./petstore-example.sh` for a complete example.
+You'll need to have installed java 1.7. Make sure your `$JAVA_HOME` is correctly pointing to it.
 
-If you don't want to set up the project locally then you can just view the swagger petstore example in the `example/` directory :D
+If you don't want to set up the project locally then you can just view the swagger
+petstore example in the `example/` directory :D
 
 
 ## What does it look like?
