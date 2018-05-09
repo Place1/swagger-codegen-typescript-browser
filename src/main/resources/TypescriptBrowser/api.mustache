@@ -65,8 +65,11 @@ export class BaseAPI {
 
     private createFetchParams(context: RequestOpts) {
         let url = this.configuration.basePath + context.path;
-        if (context.query !== undefined) {
-             url += '?' + querystring(context.query);
+        if (context.query !== undefined && Object.keys(context.query).length !== 0) {
+            // only add the querystring to the URL if there are query parameters.
+            // this is done to avoid urls ending with a "?" character which buggy webservers
+            // do not handle correctly sometimes.
+            url += '?' + querystring(context.query);
         }
         const body = context.body instanceof FormData ? context.body : JSON.stringify(context.body);
         const init = {
@@ -307,11 +310,12 @@ export class Configuration {
         this.middleware = conf.middleware || [];
         this.username = conf.username;
         this.password = conf.password;
-        if (conf.apiKey) {
-            this.apiKey = typeof conf.apiKey === 'function' ? conf.apiKey : () => conf.apiKey;
+        const { apiKey, accessToken } = conf;
+        if (apiKey) {
+            this.apiKey = typeof apiKey === 'function' ? apiKey : () => apiKey;
         }
-        if (conf.accessToken) {
-            this.accessToken = typeof conf.accessToken === 'function' ? conf.accessToken : () => conf.accessToken;
+        if (accessToken) {
+            this.accessToken = typeof accessToken === 'function' ? accessToken : () => accessToken;
         }
     }
 }
