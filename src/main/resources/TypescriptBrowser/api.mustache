@@ -177,7 +177,6 @@ export class {{classname}} extends BaseAPI {
 
         {{/consumes.0}}
         {{/bodyParam}}
-        {{#hasFormParams}}
         {{#headerParams}}
         {{#isListContainer}}
         if (requestParameters.{{paramName}}) {
@@ -225,6 +224,7 @@ export class {{classname}} extends BaseAPI {
 
         {{/isOAuth}}
         {{/authMethods}}
+        {{#hasFormParams}}
         const formData = new FormData();
         {{/hasFormParams}}
         {{#formParams}}
