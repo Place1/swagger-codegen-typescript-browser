@@ -54,9 +54,12 @@ export class BaseAPI {
         const { url, init } = this.createFetchParams(context);
         const response = await this.fetchApi(url, init);
         if (response.status >= 200 && response.status < 300) {
-            if (context.responseType === 'JSON') {
-                const result = await response.json() as T;
-                return transformPropertyNames(result, context.modelPropertyNaming);
+            switch(context.responseType) {
+                case 'JSON':
+                    const result = await response.json() as T;
+                    return transformPropertyNames(result, context.modelPropertyNaming);
+                case 'text':
+                    return await response.text() as any as T;
             }
             return response as any as T;
         }
@@ -94,6 +97,26 @@ export class BaseAPI {
             }
         }
         return response;
+    }
+
+    /*
+        https://swagger.io/docs/specification/2-0/describing-responses/
+
+        The schema keyword is used to describe the response body. A schema can define:
+        object or array – typically used with JSON and XML APIs,
+        a primitive such as a number or string – used for plain text responses,
+        file (see below).
+    */
+    static getResponseType(returnType: string): 'JSON' | 'text' | undefined {
+        switch (returnType) {
+            case 'string':
+                return 'text'
+            case 'number': // JSON.parse("42.42") -> 42.42
+            case 'object':
+            case 'array':
+            default:
+                return 'JSON'
+        }
     }
 };
 
@@ -264,7 +287,7 @@ export class {{classname}} extends BaseAPI {
             body: formData,
             {{/hasFormParams}}
             {{#returnType}}
-            responseType: 'JSON',
+            responseType: BaseAPI.getResponseType('{{returnType}}'),
             {{/returnType}}
             modelPropertyNaming: '{{modelPropertyNaming}}',
         });
@@ -338,7 +361,7 @@ interface RequestOpts {
     headers: HTTPHeaders;
     query?: HTTPQuery;
     body?: HTTPBody;
-    responseType?: 'JSON';
+    responseType?: 'JSON' | 'text';
     modelPropertyNaming: ModelPropertyNaming;
 }
 
