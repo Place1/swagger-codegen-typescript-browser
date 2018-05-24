@@ -192,19 +192,26 @@ export class BaseAPI {
         const { url, init } = this.createFetchParams(context);
         const response = await this.fetchApi(url, init);
         if (response.status >= 200 && response.status < 300) {
-            if (context.responseType === 'JSON') {
-                const result = await response.json() as T;
-                return transformPropertyNames(result, context.modelPropertyNaming);
+            switch(context.responseType) {
+                case 'JSON':
+                    const result = await response.json() as T;
+                    return transformPropertyNames(result, context.modelPropertyNaming);
+                case 'text':
+                    return await response.text() as any as T;
+                default:
+                    return response as any as T;
             }
-            return response as any as T;
         }
         throw response;
     }
 
     private createFetchParams(context: RequestOpts) {
         let url = this.configuration.basePath + context.path;
-        if (context.query !== undefined) {
-             url += '?' + querystring(context.query);
+        if (context.query !== undefined && Object.keys(context.query).length !== 0) {
+            // only add the querystring to the URL if there are query parameters.
+            // this is done to avoid urls ending with a "?" character which buggy webservers
+            // do not handle correctly sometimes.
+            url += '?' + querystring(context.query);
         }
         const body = context.body instanceof FormData ? context.body : JSON.stringify(context.body);
         const init = {
@@ -230,10 +237,26 @@ export class BaseAPI {
         }
         return response;
     }
+
+    /**
+     * https://swagger.io/docs/specification/2-0/describing-responses/
+     *
+     * If the response type for a given API is a 'string' we need to avoid
+     * parsing the response as json because JSON.parse("some string") will
+     * fail when the string isn't actually JSON.
+     */
+    protected getResponseType(returnType: string): ResponseType {
+        switch (returnType) {
+            case 'string':
+                return 'text'
+            default:
+                return 'JSON'
+        }
+    }
 };
 
 export class RequiredError extends Error {
-    name: "RequiredError"
+    name = 'RequiredError';
     constructor(public field: string, msg?: string) {
         super(msg);
     }
@@ -258,6 +281,15 @@ export class PetApi extends BaseAPI {
 
         headerParameters['Content-Type'] = 'application/json';
 
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            if (typeof this.configuration.accessToken === 'function') {
+                headerParameters["Authorization"] = this.configuration.accessToken("petstore_auth", ["write:pets", "read:pets"]);
+            } else {
+                headerParameters["Authorization"] = this.configuration.accessToken;
+            }
+        }
+
         return this.request<Response>({
             path: `/pet`,
             method: 'POST',
@@ -277,6 +309,19 @@ export class PetApi extends BaseAPI {
         }
 
         const headerParameters: HTTPHeaders = {};
+
+        if (requestParameters.apiKey !== undefined && requestParameters.apiKey !== null) {
+            headerParameters['api_key'] = String(requestParameters.apiKey);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            if (typeof this.configuration.accessToken === 'function') {
+                headerParameters["Authorization"] = this.configuration.accessToken("petstore_auth", ["write:pets", "read:pets"]);
+            } else {
+                headerParameters["Authorization"] = this.configuration.accessToken;
+            }
+        }
 
         return this.request<Response>({
             path: `/pet/{petId}`.replace(`{${"petId"}}`, encodeURIComponent(String(requestParameters.petId))),
@@ -303,12 +348,21 @@ export class PetApi extends BaseAPI {
 
         const headerParameters: HTTPHeaders = {};
 
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            if (typeof this.configuration.accessToken === 'function') {
+                headerParameters["Authorization"] = this.configuration.accessToken("petstore_auth", ["write:pets", "read:pets"]);
+            } else {
+                headerParameters["Authorization"] = this.configuration.accessToken;
+            }
+        }
+
         return this.request<Array<Pet>>({
             path: `/pet/findByStatus`,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-            responseType: 'JSON',
+            responseType: this.getResponseType('Array<Pet>'),
             modelPropertyNaming: 'camelCase',
         });
     }
@@ -330,12 +384,21 @@ export class PetApi extends BaseAPI {
 
         const headerParameters: HTTPHeaders = {};
 
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            if (typeof this.configuration.accessToken === 'function') {
+                headerParameters["Authorization"] = this.configuration.accessToken("petstore_auth", ["write:pets", "read:pets"]);
+            } else {
+                headerParameters["Authorization"] = this.configuration.accessToken;
+            }
+        }
+
         return this.request<Array<Pet>>({
             path: `/pet/findByTags`,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-            responseType: 'JSON',
+            responseType: this.getResponseType('Array<Pet>'),
             modelPropertyNaming: 'camelCase',
         });
     }
@@ -351,11 +414,15 @@ export class PetApi extends BaseAPI {
 
         const headerParameters: HTTPHeaders = {};
 
+        if (this.configuration && this.configuration.apiKey) {
+            headerParameters["api_key"] = this.configuration.apiKey("api_key"); // api_key authentication
+        }
+
         return this.request<Pet>({
             path: `/pet/{petId}`.replace(`{${"petId"}}`, encodeURIComponent(String(requestParameters.petId))),
             method: 'GET',
             headers: headerParameters,
-            responseType: 'JSON',
+            responseType: this.getResponseType('Pet'),
             modelPropertyNaming: 'camelCase',
         });
     }
@@ -372,6 +439,15 @@ export class PetApi extends BaseAPI {
         const headerParameters: HTTPHeaders = {};
 
         headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            if (typeof this.configuration.accessToken === 'function') {
+                headerParameters["Authorization"] = this.configuration.accessToken("petstore_auth", ["write:pets", "read:pets"]);
+            } else {
+                headerParameters["Authorization"] = this.configuration.accessToken;
+            }
+        }
 
         return this.request<Response>({
             path: `/pet`,
@@ -458,7 +534,7 @@ export class PetApi extends BaseAPI {
             method: 'POST',
             headers: headerParameters,
             body: formData,
-            responseType: 'JSON',
+            responseType: this.getResponseType('ApiResponse'),
             modelPropertyNaming: 'camelCase',
         });
     }
@@ -496,11 +572,15 @@ export class StoreApi extends BaseAPI {
     async getInventory(): Promise<{ [key: string]: number; }> {
         const headerParameters: HTTPHeaders = {};
 
+        if (this.configuration && this.configuration.apiKey) {
+            headerParameters["api_key"] = this.configuration.apiKey("api_key"); // api_key authentication
+        }
+
         return this.request<{ [key: string]: number; }>({
             path: `/store/inventory`,
             method: 'GET',
             headers: headerParameters,
-            responseType: 'JSON',
+            responseType: this.getResponseType('{ [key: string]: number; }'),
             modelPropertyNaming: 'camelCase',
         });
     }
@@ -520,7 +600,7 @@ export class StoreApi extends BaseAPI {
             path: `/store/order/{orderId}`.replace(`{${"orderId"}}`, encodeURIComponent(String(requestParameters.orderId))),
             method: 'GET',
             headers: headerParameters,
-            responseType: 'JSON',
+            responseType: this.getResponseType('Order'),
             modelPropertyNaming: 'camelCase',
         });
     }
@@ -543,7 +623,7 @@ export class StoreApi extends BaseAPI {
             method: 'POST',
             headers: headerParameters,
             body: requestParameters.body,
-            responseType: 'JSON',
+            responseType: this.getResponseType('Order'),
             modelPropertyNaming: 'camelCase',
         });
     }
@@ -655,7 +735,7 @@ export class UserApi extends BaseAPI {
             path: `/user/{username}`.replace(`{${"username"}}`, encodeURIComponent(String(requestParameters.username))),
             method: 'GET',
             headers: headerParameters,
-            responseType: 'JSON',
+            responseType: this.getResponseType('User'),
             modelPropertyNaming: 'camelCase',
         });
     }
@@ -690,7 +770,7 @@ export class UserApi extends BaseAPI {
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-            responseType: 'JSON',
+            responseType: this.getResponseType('string'),
             modelPropertyNaming: 'camelCase',
         });
     }
@@ -775,11 +855,12 @@ export class Configuration {
         this.middleware = conf.middleware || [];
         this.username = conf.username;
         this.password = conf.password;
-        if (conf.apiKey) {
-            this.apiKey = typeof conf.apiKey === 'function' ? conf.apiKey : () => conf.apiKey;
+        const { apiKey, accessToken } = conf;
+        if (apiKey) {
+            this.apiKey = typeof apiKey === 'function' ? apiKey : () => apiKey;
         }
-        if (conf.accessToken) {
-            this.accessToken = typeof conf.accessToken === 'function' ? conf.accessToken : () => conf.accessToken;
+        if (accessToken) {
+            this.accessToken = typeof accessToken === 'function' ? accessToken : () => accessToken;
         }
     }
 }
@@ -796,13 +877,15 @@ export interface FetchParams {
     init: RequestInit;
 }
 
+type ResponseType = 'JSON' | 'text';
+
 interface RequestOpts {
     path: string;
     method: HTTPMethod;
     headers: HTTPHeaders;
     query?: HTTPQuery;
     body?: HTTPBody;
-    responseType?: 'JSON';
+    responseType?: ResponseType;
     modelPropertyNaming: ModelPropertyNaming;
 }
 
@@ -824,8 +907,20 @@ export interface Middleware {
     post?(fetch: FetchAPI, url: string, init: RequestInit, response: Response): Promise<Response | undefined | void>;
 }
 
+function capitalize(word: string) {
+    return word.charAt(0).toUpperCase() + word.slice(1);
+}
+
+function toPascalCase(name: string) {
+    return name
+        .split('_')
+        .map(capitalize)
+        .join('');
+}
+
 function toCamelCase(name: string) {
-    return (name.charAt(0).toLowerCase() + name.slice(1) || name).toString();
+    const pascalCase = toPascalCase(name);
+    return pascalCase.charAt(0).toLowerCase() + pascalCase.slice(1);
 }
 
 function applyPropertyNameConverter(json: any, converter: (name: string) => string) {
