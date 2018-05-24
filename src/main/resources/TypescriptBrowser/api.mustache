@@ -60,8 +60,9 @@ export class BaseAPI {
                     return transformPropertyNames(result, context.modelPropertyNaming);
                 case 'text':
                     return await response.text() as any as T;
+                default:
+                    return response as any as T;
             }
-            return response as any as T;
         }
         throw response;
     }
@@ -99,21 +100,17 @@ export class BaseAPI {
         return response;
     }
 
-    /*
-        https://swagger.io/docs/specification/2-0/describing-responses/
-
-        The schema keyword is used to describe the response body. A schema can define:
-        object or array – typically used with JSON and XML APIs,
-        a primitive such as a number or string – used for plain text responses,
-        file (see below).
-    */
-    static getResponseType(returnType: string): 'JSON' | 'text' | undefined {
+    /**
+     * https://swagger.io/docs/specification/2-0/describing-responses/
+     *
+     * If the response type for a given API is a 'string' we need to avoid
+     * parsing the response as json because JSON.parse("some string") will
+     * fail when the string isn't actually JSON.
+     */
+    protected getResponseType(returnType: string): ResponseType {
         switch (returnType) {
             case 'string':
                 return 'text'
-            case 'number': // JSON.parse("42.42") -> 42.42
-            case 'object':
-            case 'array':
             default:
                 return 'JSON'
         }
@@ -287,7 +284,7 @@ export class {{classname}} extends BaseAPI {
             body: formData,
             {{/hasFormParams}}
             {{#returnType}}
-            responseType: BaseAPI.getResponseType('{{returnType}}'),
+            responseType: this.getResponseType('{{{returnType}}}'),
             {{/returnType}}
             modelPropertyNaming: '{{modelPropertyNaming}}',
         });
@@ -355,13 +352,15 @@ export interface FetchParams {
     init: RequestInit;
 }
 
+type ResponseType = 'JSON' | 'text';
+
 interface RequestOpts {
     path: string;
     method: HTTPMethod;
     headers: HTTPHeaders;
     query?: HTTPQuery;
     body?: HTTPBody;
-    responseType?: 'JSON' | 'text';
+    responseType?: ResponseType;
     modelPropertyNaming: ModelPropertyNaming;
 }
 

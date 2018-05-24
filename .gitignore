@@ -5,4 +5,5 @@ bin/
 .settings/
 .classpath
 .project
+.factorypath
 swagger-codegen-cli-2.3.1.jar
