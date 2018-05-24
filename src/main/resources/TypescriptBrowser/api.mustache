@@ -222,7 +222,6 @@ export class {{classname}} extends BaseAPI {
         {{/authMethods}}
         {{#hasFormParams}}
         const formData = new FormData();
-        headerParameters['Content-Type'] = 'multipart/form-data';
         {{/hasFormParams}}
         {{#formParams}}
         {{#isListContainer}}
