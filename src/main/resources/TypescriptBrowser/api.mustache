@@ -163,6 +163,10 @@ export class {{classname}} extends BaseAPI {
         {{/queryParams}}
         const headerParameters: HTTPHeaders = {};
 
+        {{#hasFormParams}}
+        headerParameters['Content-Type'] = 'application/x-www-form-urlencoded';
+
+        {{/hasFormParams}}
         {{#bodyParam}}
         {{^consumes}}
         headerParameters['Content-Type'] = 'application/json';
@@ -222,7 +226,6 @@ export class {{classname}} extends BaseAPI {
         {{/authMethods}}
         {{#hasFormParams}}
         const formData = new FormData();
-        headerParameters['Content-Type'] = 'multipart/form-data';
         {{/hasFormParams}}
         {{#formParams}}
         {{#isListContainer}}
