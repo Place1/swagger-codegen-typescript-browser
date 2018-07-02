@@ -193,11 +193,15 @@ export class BaseAPI {
         const { url, init } = this.createFetchParams(context);
         const response = await this.fetchApi(url, init);
         if (response.status >= 200 && response.status < 300) {
-            if (context.responseType === 'JSON') {
-                const result = await response.json() as T;
-                return transformPropertyNames(result, context.modelPropertyNaming);
+            switch(context.responseType) {
+                case 'JSON':
+                    const result = await response.json() as T;
+                    return transformPropertyNames(result, context.modelPropertyNaming);
+                case 'text':
+                    return await response.text() as any as T;
+                default:
+                    return response as any as T;
             }
-            return response as any as T;
         }
         throw response;
     }
@@ -236,6 +240,7 @@ export class BaseAPI {
     }
 
     /**
+<<<<<<< HEAD
      * Create a shallow clone of `this` by constructing a new instance
      * and then shallow cloning data members.
      */
@@ -244,6 +249,21 @@ export class BaseAPI {
         const next = new constructor(this.configuration);
         next.middleware = this.middleware.slice();
         return next;
+=======
+     * https://swagger.io/docs/specification/2-0/describing-responses/
+     *
+     * If the response type for a given API is a 'string' we need to avoid
+     * parsing the response as json because JSON.parse("some string") will
+     * fail when the string isn't actually JSON.
+     */
+    protected getResponseType(returnType: string): ResponseType {
+        switch (returnType) {
+            case 'string':
+                return 'text'
+            default:
+                return 'JSON'
+        }
+>>>>>>> bca9722b51618e39175a2a912d58ae1986f85788
     }
 };
 
@@ -354,7 +374,7 @@ export class PetApi extends BaseAPI {
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-            responseType: 'JSON',
+            responseType: this.getResponseType('Array<Pet>'),
             modelPropertyNaming: 'camelCase',
         });
     }
@@ -390,7 +410,7 @@ export class PetApi extends BaseAPI {
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-            responseType: 'JSON',
+            responseType: this.getResponseType('Array<Pet>'),
             modelPropertyNaming: 'camelCase',
         });
     }
@@ -414,7 +434,7 @@ export class PetApi extends BaseAPI {
             path: `/pet/{petId}`.replace(`{${"petId"}}`, encodeURIComponent(String(requestParameters.petId))),
             method: 'GET',
             headers: headerParameters,
-            responseType: 'JSON',
+            responseType: this.getResponseType('Pet'),
             modelPropertyNaming: 'camelCase',
         });
     }
@@ -526,7 +546,7 @@ export class PetApi extends BaseAPI {
             method: 'POST',
             headers: headerParameters,
             body: formData,
-            responseType: 'JSON',
+            responseType: this.getResponseType('ApiResponse'),
             modelPropertyNaming: 'camelCase',
         });
     }
@@ -572,7 +592,7 @@ export class StoreApi extends BaseAPI {
             path: `/store/inventory`,
             method: 'GET',
             headers: headerParameters,
-            responseType: 'JSON',
+            responseType: this.getResponseType('{ [key: string]: number; }'),
             modelPropertyNaming: 'camelCase',
         });
     }
@@ -592,7 +612,7 @@ export class StoreApi extends BaseAPI {
             path: `/store/order/{orderId}`.replace(`{${"orderId"}}`, encodeURIComponent(String(requestParameters.orderId))),
             method: 'GET',
             headers: headerParameters,
-            responseType: 'JSON',
+            responseType: this.getResponseType('Order'),
             modelPropertyNaming: 'camelCase',
         });
     }
@@ -615,7 +635,7 @@ export class StoreApi extends BaseAPI {
             method: 'POST',
             headers: headerParameters,
             body: requestParameters.body,
-            responseType: 'JSON',
+            responseType: this.getResponseType('Order'),
             modelPropertyNaming: 'camelCase',
         });
     }
@@ -727,7 +747,7 @@ export class UserApi extends BaseAPI {
             path: `/user/{username}`.replace(`{${"username"}}`, encodeURIComponent(String(requestParameters.username))),
             method: 'GET',
             headers: headerParameters,
-            responseType: 'JSON',
+            responseType: this.getResponseType('User'),
             modelPropertyNaming: 'camelCase',
         });
     }
@@ -762,7 +782,7 @@ export class UserApi extends BaseAPI {
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
-            responseType: 'JSON',
+            responseType: this.getResponseType('string'),
             modelPropertyNaming: 'camelCase',
         });
     }
@@ -869,13 +889,15 @@ export interface FetchParams {
     init: RequestInit;
 }
 
+type ResponseType = 'JSON' | 'text';
+
 interface RequestOpts {
     path: string;
     method: HTTPMethod;
     headers: HTTPHeaders;
     query?: HTTPQuery;
     body?: HTTPBody;
-    responseType?: 'JSON';
+    responseType?: ResponseType;
     modelPropertyNaming: ModelPropertyNaming;
 }
 

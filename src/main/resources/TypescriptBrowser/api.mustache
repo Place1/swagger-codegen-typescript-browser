@@ -55,11 +55,15 @@ export class BaseAPI {
         const { url, init } = this.createFetchParams(context);
         const response = await this.fetchApi(url, init);
         if (response.status >= 200 && response.status < 300) {
-            if (context.responseType === 'JSON') {
-                const result = await response.json() as T;
-                return transformPropertyNames(result, context.modelPropertyNaming);
+            switch(context.responseType) {
+                case 'JSON':
+                    const result = await response.json() as T;
+                    return transformPropertyNames(result, context.modelPropertyNaming);
+                case 'text':
+                    return await response.text() as any as T;
+                default:
+                    return response as any as T;
             }
-            return response as any as T;
         }
         throw response;
     }
@@ -95,6 +99,22 @@ export class BaseAPI {
             }
         }
         return response;
+    }
+
+    /**
+     * https://swagger.io/docs/specification/2-0/describing-responses/
+     *
+     * If the response type for a given API is a 'string' we need to avoid
+     * parsing the response as json because JSON.parse("some string") will
+     * fail when the string isn't actually JSON.
+     */
+    protected getResponseType(returnType: string): ResponseType {
+        switch (returnType) {
+            case 'string':
+                return 'text'
+            default:
+                return 'JSON'
+        }
     }
 
     /**
@@ -175,10 +195,6 @@ export class {{classname}} extends BaseAPI {
         {{/queryParams}}
         const headerParameters: HTTPHeaders = {};
 
-        {{#hasFormParams}}
-        headerParameters['Content-Type'] = 'application/x-www-form-urlencoded';
-
-        {{/hasFormParams}}
         {{#bodyParam}}
         {{^consumes}}
         headerParameters['Content-Type'] = 'application/json';
@@ -276,7 +292,7 @@ export class {{classname}} extends BaseAPI {
             body: formData,
             {{/hasFormParams}}
             {{#returnType}}
-            responseType: 'JSON',
+            responseType: this.getResponseType('{{{returnType}}}'),
             {{/returnType}}
             modelPropertyNaming: '{{modelPropertyNaming}}',
         });
@@ -344,13 +360,15 @@ export interface FetchParams {
     init: RequestInit;
 }
 
+type ResponseType = 'JSON' | 'text';
+
 interface RequestOpts {
     path: string;
     method: HTTPMethod;
     headers: HTTPHeaders;
     query?: HTTPQuery;
     body?: HTTPBody;
-    responseType?: 'JSON';
+    responseType?: ResponseType;
     modelPropertyNaming: ModelPropertyNaming;
 }
 
