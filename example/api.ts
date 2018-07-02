@@ -12,29 +12,29 @@
  */
 
 
-export const BASE_PATH = "http://petstore.swagger.io/v2".replace(/\/+$/, "");
+export const BASE_PATH = "https://petstore.swagger.io/v2".replace(/\/+$/, "");
 
 
 export interface ApiResponse {
-    code?: number; 
-    type?: string; 
-    message?: string; 
+    code?: number;
+    type?: string;
+    message?: string;
 }
 
 
 export interface Category {
-    id?: number; 
-    name?: string; 
+    id?: number;
+    name?: string;
 }
 
 
 export interface Order {
-    id?: number; 
-    petId?: number; 
-    quantity?: number; 
-    shipDate?: Date; 
+    id?: number;
+    petId?: number;
+    quantity?: number;
+    shipDate?: Date;
     status?: Order.StatusEnum; // Order Status
-    complete?: boolean; 
+    complete?: boolean;
 }
 
 export namespace Order {
@@ -47,11 +47,11 @@ export namespace Order {
 
 
 export interface Pet {
-    id?: number; 
-    category?: Category; 
-    name: string; 
-    photoUrls: Array<string>; 
-    tags?: Array<Tag>; 
+    id?: number;
+    category?: Category;
+    name: string;
+    photoUrls: Array<string>;
+    tags?: Array<Tag>;
     status?: Pet.StatusEnum; // pet status in the store
 }
 
@@ -65,19 +65,19 @@ export namespace Pet {
 
 
 export interface Tag {
-    id?: number; 
-    name?: string; 
+    id?: number;
+    name?: string;
 }
 
 
 export interface User {
-    id?: number; 
-    username?: string; 
-    firstName?: string; 
-    lastName?: string; 
-    email?: string; 
-    password?: string; 
-    phone?: string; 
+    id?: number;
+    username?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    password?: string;
+    phone?: string;
     userStatus?: number; // User Status
 }
 
@@ -173,19 +173,20 @@ export class BaseAPI {
         this.middleware = configuration.middleware;
     }
 
-    withMiddleware(...middlewares: Middleware[]) {
-        middlewares.forEach((middleware) => this.middleware.push(middleware));
-        return this;
+    withMiddleware<T extends BaseAPI>(this: T, ...middlewares: Middleware[]) {
+        const next = this.clone<T>();
+        next.middleware = next.middleware.concat(...middlewares);
+        return next;
     }
 
-    withPreMiddleware(...preMiddlewares: Array<Middleware['pre']>) {
+    withPreMiddleware<T extends BaseAPI>(this: T, ...preMiddlewares: Array<Middleware['pre']>) {
         const middlewares = preMiddlewares.map((pre) => ({ pre }));
-        return this.withMiddleware(...middlewares);
+        return this.withMiddleware<T>(...middlewares);
     }
 
-    withPostMiddleware(...postMiddlewares: Array<Middleware['post']>) {
+    withPostMiddleware<T extends BaseAPI>(this: T, ...postMiddlewares: Array<Middleware['post']>) {
         const middlewares = postMiddlewares.map((post) => ({ post }));
-        return this.withMiddleware(...middlewares);
+        return this.withMiddleware<T>(...middlewares);
     }
 
     protected async request<T>(context: RequestOpts): Promise<T> {
@@ -203,8 +204,11 @@ export class BaseAPI {
 
     private createFetchParams(context: RequestOpts) {
         let url = this.configuration.basePath + context.path;
-        if (context.query !== undefined) {
-             url += '?' + querystring(context.query);
+        if (context.query !== undefined && Object.keys(context.query).length !== 0) {
+            // only add the querystring to the URL if there are query parameters.
+            // this is done to avoid urls ending with a "?" character which buggy webservers
+            // do not handle correctly sometimes.
+            url += '?' + querystring(context.query);
         }
         const body = context.body instanceof FormData ? context.body : JSON.stringify(context.body);
         const init = {
@@ -230,10 +234,21 @@ export class BaseAPI {
         }
         return response;
     }
+
+    /**
+     * Create a shallow clone of `this` by constructing a new instance
+     * and then shallow cloning data members.
+     */
+    private clone<T extends BaseAPI>(this: T): T {
+        const constructor = this.constructor as any;
+        const next = new constructor(this.configuration);
+        next.middleware = this.middleware.slice();
+        return next;
+    }
 };
 
 export class RequiredError extends Error {
-    name: "RequiredError"
+    name = 'RequiredError';
     constructor(public field: string, msg?: string) {
         super(msg);
     }
@@ -246,7 +261,7 @@ export class RequiredError extends Error {
 export class PetApi extends BaseAPI {
 
     /**
-     * 
+     *
      * Add a new pet to the store
      */
     async addPet(requestParameters: AddPetRequest): Promise<Response> {
@@ -258,6 +273,15 @@ export class PetApi extends BaseAPI {
 
         headerParameters['Content-Type'] = 'application/json';
 
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            if (typeof this.configuration.accessToken === 'function') {
+                headerParameters["Authorization"] = this.configuration.accessToken("petstore_auth", ["write:pets", "read:pets"]);
+            } else {
+                headerParameters["Authorization"] = this.configuration.accessToken;
+            }
+        }
+
         return this.request<Response>({
             path: `/pet`,
             method: 'POST',
@@ -268,7 +292,7 @@ export class PetApi extends BaseAPI {
     }
 
     /**
-     * 
+     *
      * Deletes a pet
      */
     async deletePet(requestParameters: DeletePetRequest): Promise<Response> {
@@ -277,6 +301,19 @@ export class PetApi extends BaseAPI {
         }
 
         const headerParameters: HTTPHeaders = {};
+
+        if (requestParameters.apiKey !== undefined && requestParameters.apiKey !== null) {
+            headerParameters['api_key'] = String(requestParameters.apiKey);
+        }
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            if (typeof this.configuration.accessToken === 'function') {
+                headerParameters["Authorization"] = this.configuration.accessToken("petstore_auth", ["write:pets", "read:pets"]);
+            } else {
+                headerParameters["Authorization"] = this.configuration.accessToken;
+            }
+        }
 
         return this.request<Response>({
             path: `/pet/{petId}`.replace(`{${"petId"}}`, encodeURIComponent(String(requestParameters.petId))),
@@ -302,6 +339,15 @@ export class PetApi extends BaseAPI {
         }
 
         const headerParameters: HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            if (typeof this.configuration.accessToken === 'function') {
+                headerParameters["Authorization"] = this.configuration.accessToken("petstore_auth", ["write:pets", "read:pets"]);
+            } else {
+                headerParameters["Authorization"] = this.configuration.accessToken;
+            }
+        }
 
         return this.request<Array<Pet>>({
             path: `/pet/findByStatus`,
@@ -330,6 +376,15 @@ export class PetApi extends BaseAPI {
 
         const headerParameters: HTTPHeaders = {};
 
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            if (typeof this.configuration.accessToken === 'function') {
+                headerParameters["Authorization"] = this.configuration.accessToken("petstore_auth", ["write:pets", "read:pets"]);
+            } else {
+                headerParameters["Authorization"] = this.configuration.accessToken;
+            }
+        }
+
         return this.request<Array<Pet>>({
             path: `/pet/findByTags`,
             method: 'GET',
@@ -351,6 +406,10 @@ export class PetApi extends BaseAPI {
 
         const headerParameters: HTTPHeaders = {};
 
+        if (this.configuration && this.configuration.apiKey) {
+            headerParameters["api_key"] = this.configuration.apiKey("api_key"); // api_key authentication
+        }
+
         return this.request<Pet>({
             path: `/pet/{petId}`.replace(`{${"petId"}}`, encodeURIComponent(String(requestParameters.petId))),
             method: 'GET',
@@ -361,7 +420,7 @@ export class PetApi extends BaseAPI {
     }
 
     /**
-     * 
+     *
      * Update an existing pet
      */
     async updatePet(requestParameters: UpdatePetRequest): Promise<Response> {
@@ -373,6 +432,15 @@ export class PetApi extends BaseAPI {
 
         headerParameters['Content-Type'] = 'application/json';
 
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            if (typeof this.configuration.accessToken === 'function') {
+                headerParameters["Authorization"] = this.configuration.accessToken("petstore_auth", ["write:pets", "read:pets"]);
+            } else {
+                headerParameters["Authorization"] = this.configuration.accessToken;
+            }
+        }
+
         return this.request<Response>({
             path: `/pet`,
             method: 'PUT',
@@ -383,7 +451,7 @@ export class PetApi extends BaseAPI {
     }
 
     /**
-     * 
+     *
      * Updates a pet in the store with form data
      */
     async updatePetWithForm(requestParameters: UpdatePetWithFormRequest): Promise<Response> {
@@ -423,7 +491,7 @@ export class PetApi extends BaseAPI {
     }
 
     /**
-     * 
+     *
      * uploads an image
      */
     async uploadFile(requestParameters: UploadFileRequest): Promise<ApiResponse> {
@@ -496,6 +564,10 @@ export class StoreApi extends BaseAPI {
     async getInventory(): Promise<{ [key: string]: number; }> {
         const headerParameters: HTTPHeaders = {};
 
+        if (this.configuration && this.configuration.apiKey) {
+            headerParameters["api_key"] = this.configuration.apiKey("api_key"); // api_key authentication
+        }
+
         return this.request<{ [key: string]: number; }>({
             path: `/store/inventory`,
             method: 'GET',
@@ -526,7 +598,7 @@ export class StoreApi extends BaseAPI {
     }
 
     /**
-     * 
+     *
      * Place an order for a pet
      */
     async placeOrder(requestParameters: PlaceOrderRequest): Promise<Order> {
@@ -578,7 +650,7 @@ export class UserApi extends BaseAPI {
     }
 
     /**
-     * 
+     *
      * Creates list of users with given input array
      */
     async createUsersWithArrayInput(requestParameters: CreateUsersWithArrayInputRequest): Promise<Response> {
@@ -600,7 +672,7 @@ export class UserApi extends BaseAPI {
     }
 
     /**
-     * 
+     *
      * Creates list of users with given input array
      */
     async createUsersWithListInput(requestParameters: CreateUsersWithListInputRequest): Promise<Response> {
@@ -641,7 +713,7 @@ export class UserApi extends BaseAPI {
     }
 
     /**
-     * 
+     *
      * Get user by user name
      */
     async getUserByName(requestParameters: GetUserByNameRequest): Promise<User> {
@@ -661,7 +733,7 @@ export class UserApi extends BaseAPI {
     }
 
     /**
-     * 
+     *
      * Logs user into the system
      */
     async loginUser(requestParameters: LoginUserRequest): Promise<string> {
@@ -696,7 +768,7 @@ export class UserApi extends BaseAPI {
     }
 
     /**
-     * 
+     *
      * Logs out current logged in user session
      */
     async logoutUser(): Promise<Response> {
@@ -775,11 +847,12 @@ export class Configuration {
         this.middleware = conf.middleware || [];
         this.username = conf.username;
         this.password = conf.password;
-        if (conf.apiKey) {
-            this.apiKey = typeof conf.apiKey === 'function' ? conf.apiKey : () => conf.apiKey;
+        const { apiKey, accessToken } = conf;
+        if (apiKey) {
+            this.apiKey = typeof apiKey === 'function' ? apiKey : () => apiKey;
         }
-        if (conf.accessToken) {
-            this.accessToken = typeof conf.accessToken === 'function' ? conf.accessToken : () => conf.accessToken;
+        if (accessToken) {
+            this.accessToken = typeof accessToken === 'function' ? accessToken : () => accessToken;
         }
     }
 }
@@ -824,8 +897,20 @@ export interface Middleware {
     post?(fetch: FetchAPI, url: string, init: RequestInit, response: Response): Promise<Response | undefined | void>;
 }
 
+function capitalize(word: string) {
+    return word.charAt(0).toUpperCase() + word.slice(1);
+}
+
+function toPascalCase(name: string) {
+    return name
+        .split('_')
+        .map(capitalize)
+        .join('');
+}
+
 function toCamelCase(name: string) {
-    return (name.charAt(0).toLowerCase() + name.slice(1) || name).toString();
+    const pascalCase = toPascalCase(name);
+    return pascalCase.charAt(0).toLowerCase() + pascalCase.slice(1);
 }
 
 function applyPropertyNameConverter(json: any, converter: (name: string) => string) {

@@ -35,19 +35,20 @@ export class BaseAPI {
         this.middleware = configuration.middleware;
     }
 
-    withMiddleware(...middlewares: Middleware[]) {
-        middlewares.forEach((middleware) => this.middleware.push(middleware));
-        return this;
+    withMiddleware<T extends BaseAPI>(this: T, ...middlewares: Middleware[]) {
+        const next = this.clone<T>();
+        next.middleware = next.middleware.concat(...middlewares);
+        return next;
     }
 
-    withPreMiddleware(...preMiddlewares: Array<Middleware['pre']>) {
+    withPreMiddleware<T extends BaseAPI>(this: T, ...preMiddlewares: Array<Middleware['pre']>) {
         const middlewares = preMiddlewares.map((pre) => ({ pre }));
-        return this.withMiddleware(...middlewares);
+        return this.withMiddleware<T>(...middlewares);
     }
 
-    withPostMiddleware(...postMiddlewares: Array<Middleware['post']>) {
+    withPostMiddleware<T extends BaseAPI>(this: T, ...postMiddlewares: Array<Middleware['post']>) {
         const middlewares = postMiddlewares.map((post) => ({ post }));
-        return this.withMiddleware(...middlewares);
+        return this.withMiddleware<T>(...middlewares);
     }
 
     protected async request<T>(context: RequestOpts): Promise<T> {
@@ -94,6 +95,17 @@ export class BaseAPI {
             }
         }
         return response;
+    }
+
+    /**
+     * Create a shallow clone of `this` by constructing a new instance
+     * and then shallow cloning data members.
+     */
+    private clone<T extends BaseAPI>(this: T): T {
+        const constructor = this.constructor as any;
+        const next = new constructor(this.configuration);
+        next.middleware = this.middleware.slice();
+        return next;
     }
 };
 
