@@ -16,25 +16,25 @@ export const BASE_PATH = "https://petstore.swagger.io/v2".replace(/\/+$/, "");
 
 
 export interface ApiResponse {
-    code?: number;
-    type?: string;
-    message?: string;
+    code?: number; 
+    type?: string; 
+    message?: string; 
 }
 
 
 export interface Category {
-    id?: number;
-    name?: string;
+    id?: number; 
+    name?: string; 
 }
 
 
 export interface Order {
-    id?: number;
-    petId?: number;
-    quantity?: number;
-    shipDate?: Date;
+    id?: number; 
+    petId?: number; 
+    quantity?: number; 
+    shipDate?: Date; 
     status?: Order.StatusEnum; // Order Status
-    complete?: boolean;
+    complete?: boolean; 
 }
 
 export namespace Order {
@@ -47,11 +47,11 @@ export namespace Order {
 
 
 export interface Pet {
-    id?: number;
-    category?: Category;
-    name: string;
-    photoUrls: Array<string>;
-    tags?: Array<Tag>;
+    id?: number; 
+    category?: Category; 
+    name: string; 
+    photoUrls: Array<string>; 
+    tags?: Array<Tag>; 
     status?: Pet.StatusEnum; // pet status in the store
 }
 
@@ -65,19 +65,19 @@ export namespace Pet {
 
 
 export interface Tag {
-    id?: number;
-    name?: string;
+    id?: number; 
+    name?: string; 
 }
 
 
 export interface User {
-    id?: number;
-    username?: string;
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-    password?: string;
-    phone?: string;
+    id?: number; 
+    username?: string; 
+    firstName?: string; 
+    lastName?: string; 
+    email?: string; 
+    password?: string; 
+    phone?: string; 
     userStatus?: number; // User Status
 }
 
@@ -240,16 +240,6 @@ export class BaseAPI {
     }
 
     /**
-<<<<<<< HEAD
-     * Create a shallow clone of `this` by constructing a new instance
-     * and then shallow cloning data members.
-     */
-    private clone<T extends BaseAPI>(this: T): T {
-        const constructor = this.constructor as any;
-        const next = new constructor(this.configuration);
-        next.middleware = this.middleware.slice();
-        return next;
-=======
      * https://swagger.io/docs/specification/2-0/describing-responses/
      *
      * If the response type for a given API is a 'string' we need to avoid
@@ -263,7 +253,17 @@ export class BaseAPI {
             default:
                 return 'JSON'
         }
->>>>>>> bca9722b51618e39175a2a912d58ae1986f85788
+    }
+
+    /**
+     * Create a shallow clone of `this` by constructing a new instance
+     * and then shallow cloning data members.
+     */
+    private clone<T extends BaseAPI>(this: T): T {
+        const constructor = this.constructor as any;
+        const next = new constructor(this.configuration);
+        next.middleware = this.middleware.slice();
+        return next;
     }
 };
 
@@ -281,7 +281,7 @@ export class RequiredError extends Error {
 export class PetApi extends BaseAPI {
 
     /**
-     *
+     * 
      * Add a new pet to the store
      */
     async addPet(requestParameters: AddPetRequest): Promise<Response> {
@@ -312,7 +312,7 @@ export class PetApi extends BaseAPI {
     }
 
     /**
-     *
+     * 
      * Deletes a pet
      */
     async deletePet(requestParameters: DeletePetRequest): Promise<Response> {
@@ -440,7 +440,7 @@ export class PetApi extends BaseAPI {
     }
 
     /**
-     *
+     * 
      * Update an existing pet
      */
     async updatePet(requestParameters: UpdatePetRequest): Promise<Response> {
@@ -471,7 +471,7 @@ export class PetApi extends BaseAPI {
     }
 
     /**
-     *
+     * 
      * Updates a pet in the store with form data
      */
     async updatePetWithForm(requestParameters: UpdatePetWithFormRequest): Promise<Response> {
@@ -480,8 +480,6 @@ export class PetApi extends BaseAPI {
         }
 
         const headerParameters: HTTPHeaders = {};
-
-        headerParameters['Content-Type'] = 'application/x-www-form-urlencoded';
 
         if (this.configuration && this.configuration.accessToken) {
             // oauth required
@@ -511,7 +509,7 @@ export class PetApi extends BaseAPI {
     }
 
     /**
-     *
+     * 
      * uploads an image
      */
     async uploadFile(requestParameters: UploadFileRequest): Promise<ApiResponse> {
@@ -520,8 +518,6 @@ export class PetApi extends BaseAPI {
         }
 
         const headerParameters: HTTPHeaders = {};
-
-        headerParameters['Content-Type'] = 'application/x-www-form-urlencoded';
 
         if (this.configuration && this.configuration.accessToken) {
             // oauth required
@@ -618,7 +614,7 @@ export class StoreApi extends BaseAPI {
     }
 
     /**
-     *
+     * 
      * Place an order for a pet
      */
     async placeOrder(requestParameters: PlaceOrderRequest): Promise<Order> {
@@ -670,7 +666,7 @@ export class UserApi extends BaseAPI {
     }
 
     /**
-     *
+     * 
      * Creates list of users with given input array
      */
     async createUsersWithArrayInput(requestParameters: CreateUsersWithArrayInputRequest): Promise<Response> {
@@ -692,7 +688,7 @@ export class UserApi extends BaseAPI {
     }
 
     /**
-     *
+     * 
      * Creates list of users with given input array
      */
     async createUsersWithListInput(requestParameters: CreateUsersWithListInputRequest): Promise<Response> {
@@ -733,7 +729,7 @@ export class UserApi extends BaseAPI {
     }
 
     /**
-     *
+     * 
      * Get user by user name
      */
     async getUserByName(requestParameters: GetUserByNameRequest): Promise<User> {
@@ -753,7 +749,7 @@ export class UserApi extends BaseAPI {
     }
 
     /**
-     *
+     * 
      * Logs user into the system
      */
     async loginUser(requestParameters: LoginUserRequest): Promise<string> {
@@ -788,7 +784,7 @@ export class UserApi extends BaseAPI {
     }
 
     /**
-     *
+     * 
      * Logs out current logged in user session
      */
     async logoutUser(): Promise<Response> {
