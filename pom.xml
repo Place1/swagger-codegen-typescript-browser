@@ -6,7 +6,7 @@
     <artifactId>TypescriptBrowser-swagger-codegen</artifactId>
     <packaging>jar</packaging>
     <name>TypescriptBrowser-swagger-codegen</name>
-    <version>0.0.4</version>
+    <version>0.0.5</version>
 
     <properties>
         <main-class>io.swagger.codegen.SwaggerCodegen</main-class>
