@@ -5,25 +5,25 @@
 First, you'll need the jar file. You can either clone this repository and build it using Java 1.7
 or you can download it from the github releases page.
 
-**build**
-```
-git clone https://github.com/Place1/swagger-codegen-typescript-browser.git
-cd swagger-codegen-typescript-browser
-mvn clean package
-```
-
-**or download**
-```
-curl --output TypescriptBrowser-swagger-codegen-0.0.1-shaded.jar https://github.com/Place1/swagger-codegen-typescript-browser/releases/download/v0.0.1/TypescriptBrowser-swagger-codegen-0.0.1-shaded.jar
+**Download the latest release**
+```bash
+curl --output TypescriptBrowser-swagger-codegen-shaded.jar https://github.com/Place1/swagger-codegen-typescript-browser/releases/download/latest/TypescriptBrowser-swagger-codegen-shaded.jar
 ```
 
 Then you can run the built jar file. Here's how:
 
 ```
-java -jar ./target/TypescriptBrowser-swagger-codegen-0.0.1-shaded.jar generate \
+java -jar ./target/TypescriptBrowser-swagger-codegen-shaded.jar generate \
   -l TypescriptBrowser \
   -i http://petstore.swagger.io/v2/swagger.json \
   -o example
+```
+
+**or build from source**
+```bash
+git clone https://github.com/Place1/swagger-codegen-typescript-browser.git
+cd swagger-codegen-typescript-browser
+mvn clean package
 ```
 
 ## Example
@@ -43,7 +43,7 @@ Basic usage:
 import { PetApi, Pet } from '../example/api.ts'
 
 async function example() {
-  const api = new PetApi(config);s
+  const api = new PetApi(config);
   const pet: Pet = await api.getPetById({ petId: 10 });
   await api.uploadFile({ petId: 10, file: new File() }); // this is a multipart/form-data request
   await api.deletePet({ petId: 10 }); // this is a no-content response
@@ -75,8 +75,35 @@ async function example() {
     ]
   });
 
-  const api = new PetApi(config);s
+  const api = new PetApi(config);
   const pet: Pet = await api.getPetById({ petId: 10 });
+  await api.uploadFile({ petId: 10, file: new File() }); // this is a multipart/form-data request
+  await api.deletePet({ petId: 10 }); // this is a no-content response
+}
+
+example();
+```
+
+The same example but using middleware for a single request
+
+```typescript
+class LoggingMiddleware implements Middleware {
+  async pre(fetch: FetchAPI, url: string, init: RequestInit) {
+    console.log(`request started --> ${url}`);
+  }
+
+  async post(fetch: FetchAPI, url: string, init: RequestInit, response: Response) {
+    console.log(`request finished --> ${url}`);
+  }
+}
+
+async function example() {
+  const config = new Configuration({
+    basePath: 'http://api.mypetstore.com/', // an override for the base path to the API
+  });
+
+  const api = new PetApi(config);
+  const pet: Pet = await api.withMiddleware(new LoggingMiddleware()).getPetById({ petId: 10 });
   await api.uploadFile({ petId: 10, file: new File() }); // this is a multipart/form-data request
   await api.deletePet({ petId: 10 }); // this is a no-content response
 }
