@@ -126,7 +126,8 @@ Typescript-Fetch generator in the following ways:
   - Typescript-Fetch's history shows a trend of shipping polyfills with it's generated
     output such as 'isomorphic-fetch', 'portable-fetch' and 'url'. This codegenerator
     instead uses `windows.fetch` and allows the project consuming the generated code
-    to be responsible for supplying a polyfill. This means slimmer bundles for websites
+    to be responsible for supplying a polyfill. Alternatively the `fetch` implementation
+    can be supplied as a property of the API `Configuration`. This means slimmer bundles for websites
     targeting browsers that don't require any polyfills, and most importantly it avoids
     bugs that these 3rd party libraries have caused over the life of Typescript-Fetch.
 * Supports features that are unfortuantly broken in multiple versions of the
