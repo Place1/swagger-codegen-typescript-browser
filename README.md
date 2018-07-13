@@ -7,7 +7,7 @@ or you can download it from the github releases page.
 
 **Download the latest release**
 ```bash
-curl --output TypescriptBrowser-swagger-codegen-shaded.jar https://github.com/Place1/swagger-codegen-typescript-browser/releases/download/latest/TypescriptBrowser-swagger-codegen-shaded.jar
+curl -L --output TypescriptBrowser-swagger-codegen-shaded.jar https://github.com/Place1/swagger-codegen-typescript-browser/releases/download/v0.0.7/TypescriptBrowser-swagger-codegen-shaded.jar
 ```
 
 Then you can run the built jar file. Here's how:
