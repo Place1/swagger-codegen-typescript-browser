@@ -1,3 +1,7 @@
+**NOTICE**
+
+This generator has been merged into [OpenAPI Generator](https://github.com/OpenAPITools/openapi-generator) v4. I recommend you use "typescript-fetch" generator from the official OpenAPI Generator release as it has all of the improvements this repo made plus some extra bug fixes :D
+
 # Swagger Codegen for the TypescriptBrowser library
 
 ## How do I use this code generator?
